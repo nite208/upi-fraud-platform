@@ -1,0 +1,40 @@
+groups:
+  - name: fraud-platform
+    rules:
+      - alert: HighAPIResponseTime
+        expr: |
+          (
+            histogram_quantile(
+              0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="fraud-api"}[5m])) by (le)
+            ) > 0.5
+          )
+          or
+          (
+            sum(rate(http_request_duration_seconds_sum{job="fraud-api"}[5m]))
+            /
+            sum(rate(http_request_duration_seconds_count{job="fraud-api"}[5m]))
+            > 0.5
+          )
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fraud API response time exceeds 500ms
+          description: >-
+            API p95 or average response time has been above 500ms for more than
+            2 minutes (current value {{ $value | humanizeDuration }}).
+
+      - alert: HighKafkaConsumerLag
+        expr: |
+          max(kafka_consumer_consumer_fetch_manager_metrics_records_lag{job="kafka"}) > 1000
+          or max(kafka_consumer_fetch_manager_records_lag{job="kafka"}) > 1000
+          or max(kafka_consumergroup_lag{job="kafka"}) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Kafka consumer lag exceeds 1000 messages
+          description: >-
+            Consumer lag is {{ $value | printf "%.0f" }} messages
+            (topic {{ $labels.topic }}, group {{ $labels.consumergroup }}).
