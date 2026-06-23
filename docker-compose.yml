@@ -1,0 +1,233 @@
+version: '3.8'
+
+networks:
+  fraud-network:
+    driver: bridge
+
+volumes:
+  timescaledb_data:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
+  kafka_data:
+  mlflow_data:
+  chromadb_data:
+  ollama_data:
+  grafana_data:
+  prometheus_data:
+
+services:
+
+  # ── TimescaleDB (PostgreSQL + time-series) ────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: fraud_timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: frauddb
+      POSTGRES_USER: frauduser
+      POSTGRES_PASSWORD: fraudpass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    networks:
+      - fraud-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frauduser -d frauddb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Neo4j (Graph database) ────────────────────────
+  neo4j:
+    image: neo4j:5-community
+    container_name: fraud_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/fraudpass123
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - fraud-network
+
+  # ── Redis (Cache + feature store) ─────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: fraud_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - fraud-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Zookeeper (Kafka dependency) ──────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: fraud_zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - fraud-network
+
+  # ── Kafka (Event streaming) ───────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: fraud_kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - fraud-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── Kafka UI (Visual topic monitor) ──────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: fraud_kafka_ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: fraud-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8080:8080"
+    networks:
+      - fraud-network
+
+  # ── Flink Job Manager ─────────────────────────────
+  flink-jobmanager:
+    image: flink:1.18-scala_2.12
+    container_name: fraud_flink_jobmanager
+    restart: unless-stopped
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: "jobmanager.rpc.address: flink-jobmanager"
+    ports:
+      - "8081:8081"
+    networks:
+      - fraud-network
+
+  # ── Flink Task Manager ────────────────────────────
+  flink-taskmanager:
+    image: flink:1.18-scala_2.12
+    container_name: fraud_flink_taskmanager
+    restart: unless-stopped
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: "jobmanager.rpc.address: flink-jobmanager\ntaskmanager.numberOfTaskSlots: 2"
+    networks:
+      - fraud-network
+
+  # ── MLflow (Experiment tracking) ──────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.3
+    container_name: fraud_mlflow
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    entrypoint: >
+      bash -c "pip install psycopg2-binary -q &&
+      mlflow server
+      --backend-store-uri postgresql://frauduser:fraudpass123@timescaledb:5432/frauddb
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow/artifacts
+    networks:
+      - fraud-network
+
+  # ── ChromaDB (Vector store for RAG) ──────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: fraud_chromadb
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    networks:
+      - fraud-network
+
+  # ── Ollama (Local LLM) ────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: fraud_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - fraud-network
+
+  # ── Prometheus (Metrics collection) ──────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fraud_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - fraud-network
+
+  # ── Grafana (Metrics dashboard) ───────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fraud_grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - fraud-network
