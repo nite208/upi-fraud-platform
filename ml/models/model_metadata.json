@@ -1,0 +1,95 @@
+{
+  "features": [
+    "amount",
+    "amount_log",
+    "hour",
+    "day_of_week",
+    "is_weekend",
+    "is_night",
+    "is_round_amount",
+    "has_merchant",
+    "upi_app_encoded",
+    "sender_txn_count",
+    "sender_avg_amount",
+    "amount_vs_avg",
+    "is_new_receiver",
+    "device_shared",
+    "receiver_count",
+    "device_vpa_count"
+  ],
+  "best_threshold": 0.4099999999999998,
+  "xgb_pr_auc": 0.9620914845848938,
+  "rf_pr_auc": 0.9555001123795106,
+  "ensemble_pr_auc": 0.9606300102306704,
+  "best_f2": 0.9552756769997188,
+  "ensemble_weights": {
+    "xgboost": 0.6,
+    "random_forest": 0.4
+  },
+  "feature_importance": [
+    {
+      "feature": "sender_txn_count",
+      "importance": 3.9966182708740234
+    },
+    {
+      "feature": "amount",
+      "importance": 1.6543630361557007
+    },
+    {
+      "feature": "has_merchant",
+      "importance": 1.493881106376648
+    },
+    {
+      "feature": "hour",
+      "importance": 1.1724435091018677
+    },
+    {
+      "feature": "amount_vs_avg",
+      "importance": 0.4507371783256531
+    },
+    {
+      "feature": "amount_log",
+      "importance": 0.4034533202648163
+    },
+    {
+      "feature": "sender_avg_amount",
+      "importance": 0.2227267324924469
+    },
+    {
+      "feature": "is_new_receiver",
+      "importance": 0.14676637947559357
+    },
+    {
+      "feature": "is_night",
+      "importance": 0.11152391135692596
+    },
+    {
+      "feature": "receiver_count",
+      "importance": 0.08206863701343536
+    },
+    {
+      "feature": "day_of_week",
+      "importance": 0.04548918455839157
+    },
+    {
+      "feature": "upi_app_encoded",
+      "importance": 0.006931965705007315
+    },
+    {
+      "feature": "is_weekend",
+      "importance": 0.0051880693063139915
+    },
+    {
+      "feature": "is_round_amount",
+      "importance": 0.0
+    },
+    {
+      "feature": "device_shared",
+      "importance": 0.0
+    },
+    {
+      "feature": "device_vpa_count",
+      "importance": 0.0
+    }
+  ]
+}
