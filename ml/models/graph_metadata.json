@@ -1,0 +1,28 @@
+{
+  "gnn_pr_auc": 0.14792712449273732,
+  "num_nodes": 73499,
+  "num_edges": 2097150,
+  "input_dim": 49,
+  "hidden_dim": 128,
+  "gat_heads": 4,
+  "features": [
+    "amount",
+    "amount_log",
+    "hour",
+    "day_of_week",
+    "is_weekend",
+    "is_night",
+    "is_round_amount",
+    "has_merchant",
+    "upi_app_encoded",
+    "sender_txn_count",
+    "sender_avg_amount",
+    "amount_vs_avg",
+    "is_new_receiver",
+    "device_shared",
+    "receiver_count",
+    "device_vpa_count"
+  ],
+  "device": "cuda/T4",
+  "architecture": "GCN+GAT hybrid"
+}
