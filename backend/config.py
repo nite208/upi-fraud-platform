@@ -91,3 +91,5 @@ UPI_APP_MAP = {
     'PhonePe': 0, 'GooglePay': 1, 'Paytm': 2,
     'BHIM': 3, 'AmazonPay': 4
 }
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
