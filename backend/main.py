@@ -71,11 +71,13 @@ from api.transactions import router as txn_router
 from api.cases        import router as cases_router
 from api.graph        import router as graph_router
 from api.analytics    import router as analytics_router
+from api.investigate  import router as investigate_router
 
-app.include_router(txn_router,       prefix="/api/v1", tags=["Transactions"])
-app.include_router(cases_router,     prefix="/api/v1", tags=["Cases"])
-app.include_router(graph_router,     prefix="/api/v1", tags=["Graph"])
-app.include_router(analytics_router, prefix="/api/v1", tags=["Analytics"])
+app.include_router(txn_router,        prefix="/api/v1", tags=["Transactions"])
+app.include_router(cases_router,      prefix="/api/v1", tags=["Cases"])
+app.include_router(graph_router,      prefix="/api/v1", tags=["Graph"])
+app.include_router(analytics_router,  prefix="/api/v1", tags=["Analytics"])
+app.include_router(investigate_router, prefix="/api/v1", tags=["Investigation"])
 
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", response_model=HealthResponse)
