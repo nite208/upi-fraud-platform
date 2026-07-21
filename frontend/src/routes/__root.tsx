@@ -62,11 +62,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  // NOTE: running as a client-only SPA (vite dev / vite build), so index.html
+  // already provides <html>/<head>/<body>. Rendering them again here nests
+  // <html> inside <div id="root">, which triggers a React hydration error.
+  // If this project is later run through the full TanStack Start SSR server
+  // (server.ts/start.ts + the Start Vite plugin), restore the <html>/<body>
+  // wrapper here since HeadContent/Scripts are needed for real SSR.
   return (
-    <html lang="en">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
-    </html>
+    <>
+      <HeadContent />
+      {children}
+      <Scripts />
+    </>
   );
 }
 

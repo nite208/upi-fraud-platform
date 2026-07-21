@@ -74,7 +74,7 @@ function Dashboard() {
       try {
         // Try to fetch real data from FastAPI
         const [sumRes, txnRes] = await Promise.all([
-          fetch("/api/analytics/summary"),
+          fetch("/api/v1/analytics/summary"),
           fetch("/api/v1/transactions?limit=10"),
         ]);
 
